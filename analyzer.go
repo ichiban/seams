@@ -22,39 +22,38 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
-	inspect.Preorder([]ast.Node{
+	inspect.Nodes([]ast.Node{
+		(*ast.File)(nil),
 		(*ast.CallExpr)(nil),
-	}, func(n ast.Node) {
-		c := n.(*ast.CallExpr)
-		file := pass.Fset.File(c.Pos())
-
-		// Ignore tests.
-		if strings.HasSuffix(file.Name(), "_test.go") {
-			return
+	}, func(n ast.Node, push bool) bool {
+		if !push {
+			return false
 		}
 
-		// Ignore go-build.
-		if !strings.HasSuffix(file.Name(), ".go") {
-			return
+		switch n := n.(type) {
+		case *ast.File:
+			f := pass.Fset.File(n.Pos()).Name()
+			return !strings.HasSuffix(f, "_test.go") && strings.HasSuffix(f, ".go")
+		case *ast.CallExpr:
+			f := function(n, pass)
+			if f == nil {
+				break
+			}
+
+			pass.Report(analysis.Diagnostic{
+				Pos:     n.Pos(),
+				Message: fmt.Sprintf("untestable function/method call: %s", f.FullName()),
+			})
 		}
 
-		f := function(n, pass)
-		if f == nil {
-			return
-		}
-
-		pass.Report(analysis.Diagnostic{
-			Pos:     c.Pos(),
-			Message: fmt.Sprintf("call of untestable function/method: %s", f.FullName()),
-		})
-
+		return true
 	})
 
 	return nil, nil
 }
 
-func function(n ast.Node, pass *analysis.Pass) *types.Func {
-	i := identifier(n)
+func function(c *ast.CallExpr, pass *analysis.Pass) *types.Func {
+	i := identifier(c)
 	if i == nil {
 		return nil
 	}
@@ -92,9 +91,7 @@ func function(n ast.Node, pass *analysis.Pass) *types.Func {
 	return f
 }
 
-func identifier(n ast.Node) *ast.Ident {
-	c := n.(*ast.CallExpr)
-
+func identifier(c *ast.CallExpr) *ast.Ident {
 	switch f := c.Fun.(type) {
 	case *ast.Ident:
 		return f

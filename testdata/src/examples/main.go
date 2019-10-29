@@ -7,7 +7,7 @@ import (
 
 func main() {
 	// A call on another package's function should be replaced by one on a proxy variable.
-	fmt.Printf("Hello, World!\n") // want `call of untestable function/method: fmt\.Printf`
+	fmt.Printf("Hello, World!\n") // want `untestable function/method call: fmt\.Printf`
 	printf("Hello, World!\n")
 
 	// A call on a builtin function is okay.
@@ -20,8 +20,8 @@ func main() {
 	// A call on another package's method should be replaced by one on a proxy variable.
 	{
 		var b strings.Builder
-		b.WriteString("Hello, World!\n") // want `call of untestable function/method: \(\*strings.Builder\)\.WriteString`
-		printf(b.String())               // want `call of untestable function/method: \(\*strings.Builder\)\.String`
+		b.WriteString("Hello, World!\n") // want `untestable function/method call: \(\*strings.Builder\)\.WriteString`
+		printf(b.String())               // want `untestable function/method call: \(\*strings.Builder\)\.String`
 	}
 	{
 		var b strings.Builder
