@@ -8,5 +8,5 @@ import (
 
 func TestFromFileSystem(t *testing.T) {
 	testdata := analysistest.TestData()
-	analysistest.Run(t, testdata, Analyzer, "examples")
+	analysistest.Run(t, testdata, Analyzer, "a")
 }
