@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"regexp"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -33,7 +34,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		switch n := n.(type) {
 		case *ast.File:
 			f := pass.Fset.File(n.Pos()).Name()
-			return !strings.HasSuffix(f, "_test.go") && strings.HasSuffix(f, ".go")
+			if strings.HasSuffix(f, "_test.go") || !strings.HasSuffix(f, ".go") {
+				return false
+			}
+			return !generated(n)
 		case *ast.CallExpr:
 			f := function(n, pass)
 			if f == nil {
@@ -100,4 +104,18 @@ func identifier(c *ast.CallExpr) *ast.Ident {
 	default:
 		return nil
 	}
+}
+
+// https://github.com/golang/go/issues/13560#issuecomment-288457920
+var generatedPattern = regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
+
+func generated(f *ast.File) bool {
+	for _, c := range f.Comments {
+		for _, l := range c.List {
+			if generatedPattern.MatchString(l.Text) {
+				return true
+			}
+		}
+	}
+	return false
 }
